@@ -20,6 +20,11 @@ on:
         default: false
   release:
     types: [published]
+  # Self-test: any change to this workflow rebuilds the zip, so a packaging
+  # regression is caught in the PR that causes it rather than at release time.
+  pull_request:
+    paths:
+      - '.github/workflows/windows-portable.yml'
 
 permissions:
   contents: write        # only used by the release-upload step
