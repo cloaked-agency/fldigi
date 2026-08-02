@@ -37,29 +37,6 @@ jobs:
         shell: 'msys2 {0}'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
-          fetch-depth: 0
-          # The tree contains flarq_doxygen/user_src_doc/aux/, and `aux` is a
-          # reserved Windows device name. Git for Windows (what this runner
-          # uses) refuses to create it -- "error: invalid path" -- and the
-          # whole checkout aborts. MSYS2's git can create it, which is why
-          # hand-builds on a dev box never hit this.
-          #
-          # So check out only what the build needs. Cone mode always includes
-          # top-level files (configure.ac, Makefile.am, COPYING), so listing the
-          # directories is enough -- and it leaves both doxygen trees behind.
-          sparse-checkout: |
-            src
-            data
-            po
-            doc
-            m4
-            build-aux
-            scripts
-
       - name: Set up MSYS2 / MINGW64
         uses: msys2/setup-msys2@v2
         with:
@@ -82,6 +59,32 @@ jobs:
             mingw-w64-x86_64-libsndfile
             mingw-w64-x86_64-portaudio
             mingw-w64-x86_64-libpng
+
+      # Deliberately NOT actions/checkout. The tree contains
+      # flarq_doxygen/user_src_doc/aux/, and `aux` is a reserved Windows device
+      # name: Git for Windows rejects it while *loading the index* ("error:
+      # invalid path"), so the checkout aborts before any file is written and
+      # no sparse-checkout setting can avoid it. MSYS2's git sits on the msys
+      # runtime, which addresses such paths through the NT namespace and
+      # creates them without complaint -- the same reason hand-builds on a
+      # Windows dev box have never hit this.
+      - name: Clone source
+        run: |
+          set -euo pipefail
+          REF="${{ github.event.inputs.ref }}"
+          if [ -z "${REF}" ]; then
+            case "${{ github.event_name }}" in
+              pull_request) REF="${{ github.event.pull_request.head.sha }}" ;;
+              release)      REF="${{ github.event.release.tag_name }}" ;;
+              *)            REF="${{ github.sha }}" ;;
+            esac
+          fi
+          echo "building ref: ${REF}"
+          # blob:none keeps two decades of history (and its PDFs) off the runner;
+          # the blobs actually needed get fetched on checkout.
+          git clone --filter=blob:none "${{ github.server_url }}/${{ github.repository }}.git" .
+          git checkout --force "${REF}"
+          git --no-pager log -1 --format='%H %an %s'
 
       - name: Configure
         run: |
