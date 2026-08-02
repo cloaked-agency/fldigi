@@ -46,12 +46,19 @@ jobs:
           # reserved Windows device name. Git for Windows (what this runner
           # uses) refuses to create it -- "error: invalid path" -- and the
           # whole checkout aborts. MSYS2's git can create it, which is why
-          # hand-builds on a dev box never hit this. That directory is doxygen
-          # input and is not needed to build, so leave it out.
-          sparse-checkout-cone-mode: false
+          # hand-builds on a dev box never hit this.
+          #
+          # So check out only what the build needs. Cone mode always includes
+          # top-level files (configure.ac, Makefile.am, COPYING), so listing the
+          # directories is enough -- and it leaves both doxygen trees behind.
           sparse-checkout: |
-            /*
-            !/flarq_doxygen/user_src_doc/aux/
+            src
+            data
+            po
+            doc
+            m4
+            build-aux
+            scripts
 
       - name: Set up MSYS2 / MINGW64
         uses: msys2/setup-msys2@v2
