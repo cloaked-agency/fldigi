@@ -93,7 +93,15 @@ jobs:
           # --without-hamlib matches the hand-built releases: TCI and RigCAT are
           # the rig paths in this fork, and the shipped zip has never carried
           # libhamlib. Add --with-hamlib here if that ever changes.
-          ./configure --without-hamlib
+          #
+          # LIBS=-lwinmm: fldigi's own sources call timeBeginPeriod/timeEndPeriod
+          # (cw, rtty, fsk, scamp, util), but m4/build.m4 adds -lwinmm only to
+          # FLARQ_BUILD_LDADD -- fldigi itself never asks for it and links only
+          # because some other library on the box happens to drag winmm in. On a
+          # clean runner nothing does, and the fldigi.exe link fails on six
+          # undefined references. Autoconf appends $LIBS last, which is the
+          # correct position for a system import library.
+          ./configure --without-hamlib LIBS="-lwinmm"
 
       - name: Build
         run: |
